@@ -46,19 +46,9 @@ jobs:
       - name: Run Tests (${{ matrix.browser }})
         run: npm run test:run -- --browser.name=${{ matrix.browser }} --browser.provider=playwright
 
-      - name: Build Application
-        run: npm run build
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-build-${{ matrix.browser }}
-          path: dist/
-
   build:
     name: Build Application
     runs-on: ubuntu-22.04
-    needs: test
 
     steps:
       - name: Checkout code
@@ -82,10 +72,26 @@ jobs:
           name: app-build-${{ matrix.browser }}
           path: dist/
 
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-22.04
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifact
+        run: echo "Downloading build artifact..." # normally would be replaced with artifact pull from a build job
+
+      - name: Deploy to Server
+        run: echo "Deploying to server..." # normally would be replaced with push to server
+
   notification:
     name: Send Failure Notification
     runs-on: ubuntu-22.04
-    needs: [test, build]
+    needs: [test, build, deploy]
     if: failure()
 
     steps:
@@ -96,5 +102,5 @@ jobs:
         run: |
           echo "Sending notification..."
           curl -H "Content-Type: application/json" \
-          -d "{\"content\": \"🚨 **Build Failed!**\nZadanie nie powiodło się.\nZobacz szczegóły: $RUN_URL\"}" \
+          -d "{\"content\": \"🚨 **Build Failed!**\nCheck details: $RUN_URL\"}" \
           "$WEBHOOK_URL"
